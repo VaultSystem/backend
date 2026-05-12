@@ -16,18 +16,27 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "dev"
     DEBUG: bool = False
 
-    SECRET_KEY: str
-    ALLOWED_HOSTS: list[str] = Field(default_factory=list)
+    SECRET_KEY: str = "dev-only-change-me"
+    MASTER_KEY: str = "dev-only-master-key-change-me"
+    ALLOWED_HOSTS: list[str] = Field(default_factory=lambda: ["*"])
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOWED_ORIGINS: list[str] = Field(default_factory=list)
 
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_USER: str = "vault"
+    POSTGRES_PASSWORD: str = "vault"
+    POSTGRES_DB: str = "vault"
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
 
     DATABASE_URL: Optional[str] = None
+    DATABASE_ECHO: bool = False
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    MAX_SECRET_VALUE_BYTES: int = 64 * 1024
+
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_REQUESTS: int = 120
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
 
     MEDIA_URL: Optional[str] = "media"
     USE_S3: bool = False
@@ -58,4 +67,13 @@ class Settings(BaseSettings):
                 f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}"
                 f"/{self.POSTGRES_DB}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self):
+        if self.ENVIRONMENT.lower() == "prod":
+            if self.SECRET_KEY == "dev-only-change-me":
+                raise ValueError("SECRET_KEY must be set in production.")
+            if self.MASTER_KEY == "dev-only-master-key-change-me":
+                raise ValueError("MASTER_KEY must be set in production.")
         return self
